@@ -1,122 +1,122 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from "react";
+import axios from "axios";
+import SearchInput from "./components/SearchInput";
+import Sidebar from "./components/Sidebar";
+import MainWeatherPanel from "./components/MainWeatherPanel";
+import RightWidgets from "./components/RightWidgets";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+  //global state for the selected city and weather data
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [tempUnit, setTempUnit] = useState("celsius");
+
+  //useEffect allows us to fetch weather data whenever the selected city changes
+  useEffect(() => {
+    if (!selectedCity) return;
+
+    const fetchWeatherData = async () => {
+      setLoading(true);
+      const { latitude, longitude, timezone } = selectedCity.value;
+
+      try {
+        const response = await axios.get(
+          "https://api.open-meteo.com/v1/forecast",
+          {
+            params: {
+              latitude: latitude,
+              longitude: longitude,
+              current_weather: true,
+              hourly: "temperature_2m,weathercode",
+              daily: "weathercode,temperature_2m_max,temperature_2m_min",
+              timezone: timezone,
+              temperature_unit:
+                tempUnit === "celsius" ? "celsius" : "fahrenheit",
+            },
+          },
+        );
+        setWeatherData(response.data.current_weather);
+        setForecastData(response.data);
+      } catch (error) {
+        console.error("Meteorological payload collection failure:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeatherData();
+  }, [selectedCity, tempUnit]); //useEffect
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className={`app-wrapper ${darkMode ? "dark-mode" : "light-mode"}`}>
+      <Sidebar
+        setDarkMode={setDarkMode}
+        darkMode={darkMode}
+        tempUnit={tempUnit}
+        setTempUnit={setTempUnit}
+      />
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <div className="main-content">
+        <div className="header">
+          <div className="location-info">
+            <h1>{selectedCity?.label || "Select a city"}</h1>
+            <p className="date">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+          <button
+            className="search-btn"
+            onClick={() => setSearchOpen(!searchOpen)}
+          >
+            🔍
+          </button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+
+        {searchOpen && (
+          <div className="search-bar-wrapper">
+            <SearchInput value={selectedCity} onChange={setSelectedCity} />
+          </div>
+        )}
+
+        <div className="content-grid">
+          <div className="left-widgets">
+            <RightWidgets
+              weatherData={weatherData}
+              forecastData={forecastData}
+              tempUnit={tempUnit}
+            />
+          </div>
+
+          <div className="main-panel">
+            {loading && (
+              <div className="loading-container">
+                <p>Loading weather data...</p>
+              </div>
+            )}
+
+            {!loading && weatherData && forecastData && (
+              <MainWeatherPanel
+                weatherData={weatherData}
+                forecastData={forecastData}
+                cityName={selectedCity.label}
+                tempUnit={tempUnit}
+              />
+            )}
+          </div>
         </div>
-      </section>
+      </div>
+    </div>
+  ); //return
+} //app
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
-
-export default App
+export default App;
